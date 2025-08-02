@@ -1,6 +1,6 @@
-// Package benchmarks provides a reusable, abstractable framework for systematic
+// Package bench provides a reusable, abstractable framework for systematic
 // performance testing that can be used across multiple Go libraries and packages.
-package benchmarks
+package bench
 
 import (
 	"fmt"
@@ -15,15 +15,15 @@ type TestableFunction func(args ...interface{}) error
 
 // BenchmarkCase defines a single benchmark test case with all necessary parameters
 type BenchmarkCase struct {
-	Name         string            // Descriptive name for the benchmark
-	Function     TestableFunction  // Function to benchmark
-	Args         []interface{}     // Arguments to pass to the function
-	InputSize    int              // Logical size of input (for scaling analysis)
-	ExpectError  bool             // Whether this case should produce an error
-	Setup        func()           // Optional setup function run before benchmark
-	Teardown     func()           // Optional teardown function run after benchmark
-	Tags         []string         // Tags for grouping/filtering benchmarks
-	Metadata     map[string]interface{} // Additional metadata for analysis
+	Name        string                 // Descriptive name for the benchmark
+	Function    TestableFunction       // Function to benchmark
+	Args        []interface{}          // Arguments to pass to the function
+	InputSize   int                    // Logical size of input (for scaling analysis)
+	ExpectError bool                   // Whether this case should produce an error
+	Setup       func()                 // Optional setup function run before benchmark
+	Teardown    func()                 // Optional teardown function run after benchmark
+	Tags        []string               // Tags for grouping/filtering benchmarks
+	Metadata    map[string]interface{} // Additional metadata for analysis
 }
 
 // ScalingDimension defines a dimension for scaling tests (e.g., input size, concurrency)
@@ -42,8 +42,8 @@ type PerformanceThreshold struct {
 
 // BenchmarkSuite organizes and executes a comprehensive set of benchmarks
 type BenchmarkSuite struct {
-	Name        string                           // Suite name
-	Cases       []BenchmarkCase                  // Individual test cases
+	Name        string                          // Suite name
+	Cases       []BenchmarkCase                 // Individual test cases
 	Scaling     []ScalingDimension              // Scaling dimensions to test
 	Thresholds  map[string]PerformanceThreshold // Performance thresholds by case name
 	Baselines   map[string]BenchmarkResult      // Baseline results for regression detection
@@ -53,17 +53,17 @@ type BenchmarkSuite struct {
 
 // BenchmarkResult captures comprehensive benchmark results
 type BenchmarkResult struct {
-	Name         string            `json:"name"`
-	NsPerOp      float64          `json:"ns_per_op"`
-	AllocsPerOp  int              `json:"allocs_per_op"`
-	BytesPerOp   int64            `json:"bytes_per_op"`
-	InputSize    int              `json:"input_size"`
-	Concurrency  int              `json:"concurrency"`
-	Timestamp    time.Time        `json:"timestamp"`
-	Tags         []string         `json:"tags"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	RegressionFlag bool           `json:"regression_flag"`
-	Error        string           `json:"error,omitempty"`
+	Name           string                 `json:"name"`
+	NsPerOp        float64                `json:"ns_per_op"`
+	AllocsPerOp    int                    `json:"allocs_per_op"`
+	BytesPerOp     int64                  `json:"bytes_per_op"`
+	InputSize      int                    `json:"input_size"`
+	Concurrency    int                    `json:"concurrency"`
+	Timestamp      time.Time              `json:"timestamp"`
+	Tags           []string               `json:"tags"`
+	Metadata       map[string]interface{} `json:"metadata"`
+	RegressionFlag bool                   `json:"regression_flag"`
+	Error          string                 `json:"error,omitempty"`
 }
 
 // BenchmarkRunner executes benchmark suites with advanced analysis capabilities
@@ -127,10 +127,10 @@ func (br *BenchmarkRunner) RunScalingBenchmarks(b *testing.B) {
 		br.RunStandardBenchmarks(b)
 		return
 	}
-	
+
 	// Generate all combinations of scaling dimensions
 	combinations := br.generateScalingCombinations()
-	
+
 	for _, testCase := range br.suite.Cases {
 		for _, combo := range combinations {
 			scaledCase := br.scaleTestCase(testCase, combo)
@@ -144,7 +144,7 @@ func (br *BenchmarkRunner) RunConcurrencyBenchmarks(b *testing.B) {
 	if len(br.suite.Concurrency) == 0 {
 		br.suite.Concurrency = []int{1, 2, 4, 8, 16} // Default concurrency levels
 	}
-	
+
 	for _, testCase := range br.suite.Cases {
 		for _, concurrency := range br.suite.Concurrency {
 			br.runConcurrentBenchmark(b, testCase, concurrency)
@@ -156,12 +156,12 @@ func (br *BenchmarkRunner) RunConcurrencyBenchmarks(b *testing.B) {
 func (br *BenchmarkRunner) RunStabilityBenchmarks(b *testing.B) {
 	for _, testCase := range br.suite.Cases {
 		results := make([]BenchmarkResult, br.suite.Iterations)
-		
+
 		for i := 0; i < br.suite.Iterations; i++ {
 			result := br.runSingleBenchmark(b, testCase, 1, testCase.InputSize)
 			results[i] = result
 		}
-		
+
 		br.analyzeStability(testCase.Name, results)
 	}
 }
@@ -173,17 +173,17 @@ func (br *BenchmarkRunner) RunMemoryProfilingBenchmarks(b *testing.B) {
 			if testCase.Setup != nil {
 				testCase.Setup()
 			}
-			
+
 			b.ReportAllocs()
 			b.ResetTimer()
-			
+
 			for i := 0; i < b.N; i++ {
 				err := testCase.Function(testCase.Args...)
 				if (err != nil) != testCase.ExpectError {
 					b.Errorf("Expected error=%v, got error=%v", testCase.ExpectError, err != nil)
 				}
 			}
-			
+
 			if testCase.Teardown != nil {
 				testCase.Teardown()
 			}
@@ -194,26 +194,26 @@ func (br *BenchmarkRunner) RunMemoryProfilingBenchmarks(b *testing.B) {
 // runSingleBenchmark executes a single benchmark case and captures results
 func (br *BenchmarkRunner) runSingleBenchmark(b *testing.B, testCase BenchmarkCase, concurrency int, inputSize int) BenchmarkResult {
 	var result BenchmarkResult
-	
+
 	b.Run(fmt.Sprintf("%s_Size%d_Conc%d", testCase.Name, inputSize, concurrency), func(b *testing.B) {
 		if testCase.Setup != nil {
 			testCase.Setup()
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
-		
+
 		start := time.Now()
-		
+
 		for i := 0; i < b.N; i++ {
 			err := testCase.Function(testCase.Args...)
 			if (err != nil) != testCase.ExpectError {
 				b.Errorf("Expected error=%v, got error=%v", testCase.ExpectError, err != nil)
 			}
 		}
-		
+
 		elapsed := time.Since(start)
-		
+
 		result = BenchmarkResult{
 			Name:        fmt.Sprintf("%s_Size%d_Conc%d", testCase.Name, inputSize, concurrency),
 			NsPerOp:     float64(elapsed.Nanoseconds()) / float64(b.N),
@@ -223,25 +223,25 @@ func (br *BenchmarkRunner) runSingleBenchmark(b *testing.B, testCase BenchmarkCa
 			Tags:        testCase.Tags,
 			Metadata:    testCase.Metadata,
 		}
-		
+
 		// Capture memory stats if available
 		allocsPerOp := testing.AllocsPerRun(1, func() {
 			_ = testCase.Function(testCase.Args...)
 		})
 		result.AllocsPerOp = int(allocsPerOp)
-		
+
 		if testCase.Teardown != nil {
 			testCase.Teardown()
 		}
 	})
-	
+
 	// Check for regressions
 	br.checkRegression(&result, testCase.Name)
-	
+
 	br.mu.Lock()
 	br.results = append(br.results, result)
 	br.mu.Unlock()
-	
+
 	return result
 }
 
@@ -251,11 +251,11 @@ func (br *BenchmarkRunner) runConcurrentBenchmark(b *testing.B, testCase Benchma
 		if testCase.Setup != nil {
 			testCase.Setup()
 		}
-		
+
 		b.ReportAllocs()
 		b.SetParallelism(concurrency)
 		b.ResetTimer()
-		
+
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				err := testCase.Function(testCase.Args...)
@@ -264,7 +264,7 @@ func (br *BenchmarkRunner) runConcurrentBenchmark(b *testing.B, testCase Benchma
 				}
 			}
 		})
-		
+
 		if testCase.Teardown != nil {
 			testCase.Teardown()
 		}
@@ -276,9 +276,9 @@ func (br *BenchmarkRunner) generateScalingCombinations() []map[string]interface{
 	if len(br.suite.Scaling) == 0 {
 		return []map[string]interface{}{make(map[string]interface{})}
 	}
-	
+
 	combinations := []map[string]interface{}{}
-	
+
 	// Generate Cartesian product of all scaling dimensions
 	var generate func(int, map[string]interface{})
 	generate = func(dimensionIndex int, current map[string]interface{}) {
@@ -290,14 +290,14 @@ func (br *BenchmarkRunner) generateScalingCombinations() []map[string]interface{
 			combinations = append(combinations, combo)
 			return
 		}
-		
+
 		dimension := br.suite.Scaling[dimensionIndex]
 		for _, value := range dimension.Values {
 			current[dimension.Name] = value
 			generate(dimensionIndex+1, current)
 		}
 	}
-	
+
 	generate(0, make(map[string]interface{}))
 	return combinations
 }
@@ -305,7 +305,7 @@ func (br *BenchmarkRunner) generateScalingCombinations() []map[string]interface{
 // scaleTestCase applies scaling parameters to a test case
 func (br *BenchmarkRunner) scaleTestCase(original BenchmarkCase, scaling map[string]interface{}) BenchmarkCase {
 	scaled := original
-	
+
 	// Apply scaling transformations
 	if inputSize, exists := scaling["InputSize"]; exists {
 		if size, ok := inputSize.(int); ok {
@@ -314,7 +314,7 @@ func (br *BenchmarkRunner) scaleTestCase(original BenchmarkCase, scaling map[str
 			scaled.Name = fmt.Sprintf("%s_Size%d", original.Name, size)
 		}
 	}
-	
+
 	// Add scaling metadata
 	if scaled.Metadata == nil {
 		scaled.Metadata = make(map[string]interface{})
@@ -322,7 +322,7 @@ func (br *BenchmarkRunner) scaleTestCase(original BenchmarkCase, scaling map[str
 	for k, v := range scaling {
 		scaled.Metadata[k] = v
 	}
-	
+
 	return scaled
 }
 
@@ -343,7 +343,7 @@ func (br *BenchmarkRunner) checkRegression(result *BenchmarkResult, caseName str
 			br.regressionCount++
 		}
 	}
-	
+
 	// Check against baseline performance
 	if baseline, exists := br.suite.Baselines[caseName]; exists {
 		toleranceNs := baseline.NsPerOp * (br.suite.Thresholds[caseName].TolerancePercent / 100.0)
@@ -359,19 +359,19 @@ func (br *BenchmarkRunner) analyzeStability(caseName string, results []Benchmark
 	if len(results) < 2 {
 		return
 	}
-	
+
 	// Calculate coefficient of variation
 	var sum, sumSquares float64
 	for _, result := range results {
 		sum += result.NsPerOp
 		sumSquares += result.NsPerOp * result.NsPerOp
 	}
-	
+
 	mean := sum / float64(len(results))
 	variance := (sumSquares / float64(len(results))) - (mean * mean)
 	stdDev := variance // Simplified, should use math.Sqrt
 	cv := stdDev / mean
-	
+
 	// Flag high variance as potential instability
 	if cv > 0.1 { // 10% coefficient of variation threshold
 		for i := range results {
@@ -384,7 +384,7 @@ func (br *BenchmarkRunner) analyzeStability(caseName string, results []Benchmark
 func (br *BenchmarkRunner) GetResults() []BenchmarkResult {
 	br.mu.RLock()
 	defer br.mu.RUnlock()
-	
+
 	resultsCopy := make([]BenchmarkResult, len(br.results))
 	copy(resultsCopy, br.results)
 	return resultsCopy
@@ -400,7 +400,7 @@ func (br *BenchmarkRunner) GetRegressionCount() int {
 // GenerateReport creates a comprehensive benchmark report
 func (br *BenchmarkRunner) GenerateReport() BenchmarkReport {
 	results := br.GetResults()
-	
+
 	return BenchmarkReport{
 		SuiteName:       br.suite.Name,
 		TotalBenchmarks: len(results),
@@ -408,22 +408,22 @@ func (br *BenchmarkRunner) GenerateReport() BenchmarkReport {
 		Results:         results,
 		Timestamp:       time.Now(),
 		Runtime: RuntimeInfo{
-			GOOS:         runtime.GOOS,
-			GOARCH:       runtime.GOARCH,
-			NumCPU:       runtime.NumCPU(),
-			GoVersion:    runtime.Version(),
+			GOOS:      runtime.GOOS,
+			GOARCH:    runtime.GOARCH,
+			NumCPU:    runtime.NumCPU(),
+			GoVersion: runtime.Version(),
 		},
 	}
 }
 
 // BenchmarkReport provides comprehensive reporting of benchmark results
 type BenchmarkReport struct {
-	SuiteName       string              `json:"suite_name"`
-	TotalBenchmarks int                 `json:"total_benchmarks"`
-	RegressionCount int                 `json:"regression_count"`
-	Results         []BenchmarkResult   `json:"results"`
-	Timestamp       time.Time           `json:"timestamp"`
-	Runtime         RuntimeInfo         `json:"runtime"`
+	SuiteName       string            `json:"suite_name"`
+	TotalBenchmarks int               `json:"total_benchmarks"`
+	RegressionCount int               `json:"regression_count"`
+	Results         []BenchmarkResult `json:"results"`
+	Timestamp       time.Time         `json:"timestamp"`
+	Runtime         RuntimeInfo       `json:"runtime"`
 }
 
 // RuntimeInfo captures runtime environment details

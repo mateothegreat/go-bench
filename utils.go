@@ -1,4 +1,4 @@
-package benchmarks
+package bench
 
 import (
 	"encoding/json"
@@ -99,7 +99,7 @@ func (dg *DataGenerator) GenerateInts(size int, min, max int64) []int64 {
 	if step == 0 {
 		step = 1
 	}
-	
+
 	for i := 0; i < size; i++ {
 		data[i] = min + int64(i)*step
 	}
@@ -110,7 +110,7 @@ func (dg *DataGenerator) GenerateInts(size int, min, max int64) []int64 {
 func (dg *DataGenerator) GenerateStrings(count, length int) []string {
 	data := make([]string, count)
 	chars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	
+
 	for i := 0; i < count; i++ {
 		str := make([]byte, length)
 		for j := range str {
@@ -125,7 +125,7 @@ func (dg *DataGenerator) GenerateStrings(count, length int) []string {
 func (dg *DataGenerator) GenerateFloats(size int, min, max float64) []float64 {
 	data := make([]float64, size)
 	step := (max - min) / float64(size)
-	
+
 	for i := 0; i < size; i++ {
 		data[i] = min + float64(i)*step
 	}
@@ -146,30 +146,30 @@ func NewResultAnalyzer(results []BenchmarkResult) *ResultAnalyzer {
 func (ra *ResultAnalyzer) AnalyzeScaling() ScalingAnalysis {
 	// Group results by base name (without size suffix)
 	groups := make(map[string][]BenchmarkResult)
-	
+
 	for _, result := range ra.results {
 		baseName := ra.extractBaseName(result.Name)
 		groups[baseName] = append(groups[baseName], result)
 	}
-	
+
 	analysis := ScalingAnalysis{
 		Functions: make(map[string]FunctionScaling),
 	}
-	
+
 	for funcName, results := range groups {
 		if len(results) < 2 {
 			continue // Need at least 2 data points for scaling analysis
 		}
-		
+
 		// Sort by input size
 		sort.Slice(results, func(i, j int) bool {
 			return results[i].InputSize < results[j].InputSize
 		})
-		
+
 		scaling := ra.calculateScaling(results)
 		analysis.Functions[funcName] = scaling
 	}
-	
+
 	return analysis
 }
 
@@ -179,7 +179,7 @@ func (ra *ResultAnalyzer) calculateScaling(results []BenchmarkResult) FunctionSc
 	if n < 2 {
 		return FunctionScaling{Complexity: "unknown"}
 	}
-	
+
 	// Calculate ratios between consecutive measurements
 	var ratios []float64
 	for i := 1; i < n; i++ {
@@ -187,11 +187,11 @@ func (ra *ResultAnalyzer) calculateScaling(results []BenchmarkResult) FunctionSc
 		timeRatio := results[i].NsPerOp / results[i-1].NsPerOp
 		ratios = append(ratios, timeRatio/sizeRatio)
 	}
-	
+
 	// Analyze ratio patterns to determine complexity
 	avgRatio := ra.calculateMean(ratios)
 	variance := ra.calculateVariance(ratios, avgRatio)
-	
+
 	var complexity string
 	if variance < 0.1 { // Low variance
 		if avgRatio < 1.2 {
@@ -204,16 +204,16 @@ func (ra *ResultAnalyzer) calculateScaling(results []BenchmarkResult) FunctionSc
 	} else {
 		complexity = "O(n²) or worse" // High variance suggests worse complexity
 	}
-	
+
 	return FunctionScaling{
-		Complexity:    complexity,
-		AvgRatio:      avgRatio,
-		Variance:      variance,
-		DataPoints:    n,
-		MinInputSize:  results[0].InputSize,
-		MaxInputSize:  results[n-1].InputSize,
-		MinNsPerOp:    results[0].NsPerOp,
-		MaxNsPerOp:    results[n-1].NsPerOp,
+		Complexity:   complexity,
+		AvgRatio:     avgRatio,
+		Variance:     variance,
+		DataPoints:   n,
+		MinInputSize: results[0].InputSize,
+		MaxInputSize: results[n-1].InputSize,
+		MinNsPerOp:   results[0].NsPerOp,
+		MaxNsPerOp:   results[n-1].NsPerOp,
 	}
 }
 
@@ -234,7 +234,7 @@ func (ra *ResultAnalyzer) calculateMean(values []float64) float64 {
 	if len(values) == 0 {
 		return 0
 	}
-	
+
 	sum := 0.0
 	for _, v := range values {
 		sum += v
@@ -247,7 +247,7 @@ func (ra *ResultAnalyzer) calculateVariance(values []float64, mean float64) floa
 	if len(values) <= 1 {
 		return 0
 	}
-	
+
 	sumSquares := 0.0
 	for _, v := range values {
 		diff := v - mean
@@ -264,14 +264,14 @@ type ScalingAnalysis struct {
 
 // FunctionScaling describes the scaling characteristics of a function
 type FunctionScaling struct {
-	Complexity    string  `json:"complexity"`
-	AvgRatio      float64 `json:"avg_ratio"`
-	Variance      float64 `json:"variance"`
-	DataPoints    int     `json:"data_points"`
-	MinInputSize  int     `json:"min_input_size"`
-	MaxInputSize  int     `json:"max_input_size"`
-	MinNsPerOp    float64 `json:"min_ns_per_op"`
-	MaxNsPerOp    float64 `json:"max_ns_per_op"`
+	Complexity   string  `json:"complexity"`
+	AvgRatio     float64 `json:"avg_ratio"`
+	Variance     float64 `json:"variance"`
+	DataPoints   int     `json:"data_points"`
+	MinInputSize int     `json:"min_input_size"`
+	MaxInputSize int     `json:"max_input_size"`
+	MinNsPerOp   float64 `json:"min_ns_per_op"`
+	MaxNsPerOp   float64 `json:"max_ns_per_op"`
 }
 
 // ReportGenerator creates comprehensive reports from benchmark results
@@ -287,14 +287,14 @@ func NewReportGenerator(results []BenchmarkResult) *ReportGenerator {
 // GenerateMarkdownReport creates a markdown report suitable for documentation
 func (rg *ReportGenerator) GenerateMarkdownReport() string {
 	var report strings.Builder
-	
+
 	report.WriteString("# Benchmark Report\n\n")
 	report.WriteString(fmt.Sprintf("Generated: %s\n\n", time.Now().Format(time.RFC3339)))
-	
+
 	// Summary statistics
 	report.WriteString("## Summary\n\n")
 	report.WriteString(fmt.Sprintf("- Total benchmarks: %d\n", len(rg.results)))
-	
+
 	regressions := 0
 	for _, result := range rg.results {
 		if result.RegressionFlag {
@@ -302,26 +302,26 @@ func (rg *ReportGenerator) GenerateMarkdownReport() string {
 		}
 	}
 	report.WriteString(fmt.Sprintf("- Performance regressions: %d\n\n", regressions))
-	
+
 	// Performance table
 	report.WriteString("## Performance Results\n\n")
 	report.WriteString("| Benchmark | Input Size | ns/op | allocs/op | Status |\n")
 	report.WriteString("|-----------|------------|-------|-----------|--------|\n")
-	
+
 	for _, result := range rg.results {
 		status := "✅ Pass"
 		if result.RegressionFlag {
 			status = "❌ Regression"
 		}
-		
+
 		report.WriteString(fmt.Sprintf("| %s | %d | %.2f | %d | %s |\n",
 			result.Name, result.InputSize, result.NsPerOp, result.AllocsPerOp, status))
 	}
-	
+
 	// Scaling analysis
 	analyzer := NewResultAnalyzer(rg.results)
 	scaling := analyzer.AnalyzeScaling()
-	
+
 	if len(scaling.Functions) > 0 {
 		report.WriteString("\n## Scaling Analysis\n\n")
 		for funcName, analysis := range scaling.Functions {
@@ -331,7 +331,7 @@ func (rg *ReportGenerator) GenerateMarkdownReport() string {
 			report.WriteString(fmt.Sprintf("- **Performance range**: %.2f - %.2f ns/op\n\n", analysis.MinNsPerOp, analysis.MaxNsPerOp))
 		}
 	}
-	
+
 	return report.String()
 }
 
@@ -339,17 +339,17 @@ func (rg *ReportGenerator) GenerateMarkdownReport() string {
 func SaveResults(results []BenchmarkResult, filePath string) error {
 	// Ensure directory exists
 	dir := filepath.Dir(filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
-	
+
 	// Write results to file
 	file, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to create file %s: %w", filePath, err)
 	}
 	defer file.Close()
-	
+
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(results)
@@ -362,7 +362,7 @@ func LoadResults(filePath string) ([]BenchmarkResult, error) {
 		return nil, fmt.Errorf("failed to open file %s: %w", filePath, err)
 	}
 	defer file.Close()
-	
+
 	var results []BenchmarkResult
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&results)
@@ -375,7 +375,7 @@ func LoadBaselines(filePath string) (map[string]BenchmarkResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	baselines := make(map[string]BenchmarkResult)
 	for _, result := range results {
 		baselines[result.Name] = result
@@ -389,9 +389,9 @@ func CompareResults(baseline, current []BenchmarkResult, tolerance float64) []Re
 	for _, result := range baseline {
 		baselineMap[result.Name] = result
 	}
-	
+
 	var regressions []RegressionResult
-	
+
 	for _, currentResult := range current {
 		if baselineResult, exists := baselineMap[currentResult.Name]; exists {
 			regression := analyzeRegression(baselineResult, currentResult, tolerance)
@@ -400,7 +400,7 @@ func CompareResults(baseline, current []BenchmarkResult, tolerance float64) []Re
 			}
 		}
 	}
-	
+
 	return regressions
 }
 
@@ -408,25 +408,25 @@ func CompareResults(baseline, current []BenchmarkResult, tolerance float64) []Re
 func analyzeRegression(baseline, current BenchmarkResult, tolerance float64) RegressionResult {
 	timeDiff := current.NsPerOp - baseline.NsPerOp
 	timePercent := (timeDiff / baseline.NsPerOp) * 100
-	
+
 	allocDiff := current.AllocsPerOp - baseline.AllocsPerOp
 	allocPercent := 0.0
 	if baseline.AllocsPerOp > 0 {
 		allocPercent = (float64(allocDiff) / float64(baseline.AllocsPerOp)) * 100
 	}
-	
+
 	isRegression := math.Abs(timePercent) > tolerance || math.Abs(allocPercent) > tolerance
-	
+
 	return RegressionResult{
-		Name:           current.Name,
-		IsRegression:   isRegression,
-		BaselineNs:     baseline.NsPerOp,
-		CurrentNs:      current.NsPerOp,
-		TimeDiffNs:     timeDiff,
-		TimeDiffPercent: timePercent,
-		BaselineAllocs: baseline.AllocsPerOp,
-		CurrentAllocs:  current.AllocsPerOp,
-		AllocDiff:      allocDiff,
+		Name:             current.Name,
+		IsRegression:     isRegression,
+		BaselineNs:       baseline.NsPerOp,
+		CurrentNs:        current.NsPerOp,
+		TimeDiffNs:       timeDiff,
+		TimeDiffPercent:  timePercent,
+		BaselineAllocs:   baseline.AllocsPerOp,
+		CurrentAllocs:    current.AllocsPerOp,
+		AllocDiff:        allocDiff,
 		AllocDiffPercent: allocPercent,
 	}
 }
